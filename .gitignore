@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+tt_altyn_aay.db
+activities.xlsx
+backups/
+frontend-react/node_modules/
+frontend-react/dist/
+frontend-react/.vite/

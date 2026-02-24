@@ -1,0 +1,103 @@
+﻿<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TT Altyn Aay App</title>
+    <link rel="stylesheet" href="/frontend/css/reset.css" />
+    <link rel="stylesheet" href="/frontend/assets/styles.css" />
+  </head>
+  <body>
+    <div id="toast-region" class="toast-region" aria-live="polite" aria-atomic="true"></div>
+
+    <div id="login-view" class="auth-shell">
+      <form id="login-form" class="auth-card" novalidate>
+        <p class="auth-eyebrow">TT Altyn Aay App</p>
+        <h1>ورود به سیستم</h1>
+        <p class="muted">برای ادامه وارد حساب کاربری خود شوید.</p>
+
+        <div class="form-field">
+          <label for="username">نام کاربری <span class="required">*</span></label>
+          <input id="username" name="username" required autocomplete="username" />
+        </div>
+
+        <div class="form-field">
+          <label for="password">رمز عبور <span class="required">*</span></label>
+          <input id="password" name="password" type="password" required autocomplete="current-password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">ورود</button>
+      </form>
+    </div>
+
+    <div id="app-view" class="app-shell hidden">
+      <div id="mobile-backdrop" class="mobile-backdrop" aria-hidden="true"></div>
+
+      <aside id="sidebar" class="sidebar" aria-label="ناوبری اصلی">
+        <div class="sidebar-brand">
+          <h2>TT Altyn Aay App</h2>
+          <p id="sidebar-greeting" class="muted"></p>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="منوی اصلی">
+          <button class="nav-item active" data-page="dashboard" type="button">داشبورد</button>
+          <button class="nav-item" data-page="activities" type="button">فعالیت ها</button>
+          <button class="nav-item" data-page="new-activity" type="button">افزودن فعالیت</button>
+          <button class="nav-item" data-page="notifications" type="button">اعلان ها</button>
+          <button class="nav-item admin-only" data-page="audit" type="button">ممیزی</button>
+          <button class="nav-item admin-only" data-page="staff" type="button">کارمندان</button>
+          <button class="nav-item admin-only" data-page="settings" type="button">تنظیمات</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <p id="current-user" class="muted"></p>
+          <button id="logout-btn" class="btn btn-secondary btn-block" type="button">خروج</button>
+        </div>
+      </aside>
+
+      <div class="main-shell">
+        <header class="topbar" role="banner">
+          <div class="topbar-group">
+            <button id="menu-toggle" class="btn btn-icon mobile-only" type="button" aria-label="باز کردن منو" aria-expanded="false"></button>
+            <div class="search-wrap">
+              <label for="global-search" class="sr-only">جستجوی عمومی</label>
+              <input id="global-search" class="search-input" type="search" placeholder="جستجو در فعالیت ها، مشتری یا آدرس..." autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="topbar-group">
+            <button id="theme-toggle" class="btn btn-ghost" type="button" aria-label="تغییر تم">حالت شب</button>
+            <button id="notif-toggle" class="btn btn-icon" type="button" aria-label="اعلان ها" aria-expanded="false">
+              <span class="notif-count" id="notif-badge">0</span>
+            </button>
+
+            <div class="user-menu-wrap">
+              <button id="user-menu-btn" class="btn btn-secondary" type="button" aria-haspopup="menu" aria-expanded="false">پروفایل</button>
+              <div id="user-menu" class="popover" role="menu">
+                <p id="user-menu-name" class="popover-title"></p>
+                <button id="user-menu-logout" class="btn btn-ghost btn-block" type="button">خروج</button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <aside id="notification-panel" class="notification-panel" aria-label="اعلان ها"></aside>
+
+        <main class="content-shell" id="content-shell">
+          <section id="page-dashboard" class="page active" aria-labelledby="page-title-dashboard"></section>
+          <section id="page-activities" class="page" aria-labelledby="page-title-activities"></section>
+          <section id="page-new-activity" class="page" aria-labelledby="page-title-new-activity"></section>
+          <section id="page-notifications" class="page" aria-labelledby="page-title-notifications"></section>
+          <section id="page-audit" class="page" aria-labelledby="page-title-audit"></section>
+          <section id="page-staff" class="page" aria-labelledby="page-title-staff"></section>
+          <section id="page-settings" class="page" aria-labelledby="page-title-settings"></section>
+        </main>
+      </div>
+    </div>
+
+    <div id="modal-root"></div>
+    <div id="drawer-root"></div>
+
+    <script type="module" src="/frontend/js/app.js"></script>
+  </body>
+</html>
