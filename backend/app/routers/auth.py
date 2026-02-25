@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
 from ..api_utils import fail, ok
-from ..auth import create_access_token, create_refresh_token, decode_token, verify_password
+from ..auth import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from ..database import get_db
 from ..deps import get_current_user, normalize_role
 from ..models import User
-from ..schemas import LoginRequest
+from ..schemas import ChangePasswordRequest, LoginRequest
 from ..services.audit_service import add_audit_log
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -75,3 +75,16 @@ def refresh_token(payload: dict, db: Session = Depends(get_db)):
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
     return ok({"id": user.id, "username": user.username, "role": normalize_role(user.role)})
+
+
+@router.post("/change-password")
+def change_password(payload: ChangePasswordRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if not verify_password(payload.current_password, user.password_hash):
+        raise fail("INVALID_CREDENTIALS", "رمز فعلی اشتباه است", status_code=400)
+    if payload.current_password == payload.new_password:
+        raise fail("BAD_REQUEST", "رمز جدید باید متفاوت باشد", status_code=400)
+
+    user.password_hash = hash_password(payload.new_password)
+    add_audit_log(db, user=user, action="change_password", entity="user", entity_id=str(user.id), details={})
+    db.commit()
+    return ok({"changed": True})

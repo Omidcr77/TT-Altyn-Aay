@@ -9,6 +9,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DataTable } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
 import { useToast } from "@/components/ToastProvider";
+import { changePasswordRequest } from "@/services/http";
 import {
   createMasterData,
   deleteMasterData,
@@ -65,6 +66,10 @@ export function SettingsPage() {
     high_priority_threshold: 5,
     overdue_days: 2
   });
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const masterForm = useForm<MasterForm>({
     resolver: zodResolver(masterSchema),
@@ -163,6 +168,17 @@ export function SettingsPage() {
     mutationFn: runNotificationRules,
     onSuccess: () => showToast("قوانین اعلان اجرا شد", "success"),
     onError: (error) => showToast(error instanceof Error ? error.message : "اجرای قوانین ناکام شد", "error")
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: ({ current, next }: { current: string; next: string }) => changePasswordRequest(current, next),
+    onSuccess: () => {
+      showToast("رمز عبور با موفقیت تغییر کرد", "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error) => showToast(error instanceof Error ? error.message : "تغییر رمز ناکام شد", "error")
   });
 
   const createBackupMutation = useMutation({
@@ -266,6 +282,43 @@ export function SettingsPage() {
           شما مدیر هستید و بخش داده های پایه/تنظیمات ایمیل فقط قابل مشاهده است. برای تغییرات، ادمین نیاز است.
         </section>
       )}
+
+      <section className="card p-3 space-y-3">
+        <h4 className="font-semibold">امنیت حساب</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="text-sm text-slate-700">رمز فعلی</label>
+            <input className="input mt-1" type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-slate-700">رمز جدید</label>
+            <input className="input mt-1" type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </div>
+          <div>
+            <label className="text-sm text-slate-700">تکرار رمز جدید</label>
+            <input className="input mt-1" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <button
+            className="btn-primary"
+            disabled={changePasswordMutation.isPending}
+            onClick={() => {
+              if (newPassword.length < 6) {
+                showToast("رمز جدید حداقل ۶ کاراکتر باشد", "error");
+                return;
+              }
+              if (newPassword !== confirmPassword) {
+                showToast("تکرار رمز جدید مطابقت ندارد", "error");
+                return;
+              }
+              changePasswordMutation.mutate({ current: currentPassword, next: newPassword });
+            }}
+          >
+            تغییر رمز عبور
+          </button>
+        </div>
+      </section>
 
       <section className="card p-3 space-y-3">
         <div className="flex items-center justify-between">

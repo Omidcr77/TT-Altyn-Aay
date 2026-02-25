@@ -76,3 +76,10 @@ export async function apiRequest<T>(path: string, method: HttpMethod = "GET", bo
 export function loginRequest(username: string, password: string) {
   return apiRequest<AuthPayload>("/api/auth/login", "POST", { username, password });
 }
+
+export function changePasswordRequest(currentPassword: string, newPassword: string) {
+  return apiRequest<{ changed: boolean }>("/api/auth/change-password", "POST", {
+    current_password: currentPassword,
+    new_password: newPassword
+  });
+}
