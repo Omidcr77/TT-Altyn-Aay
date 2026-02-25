@@ -225,6 +225,24 @@ export function ActivitiesPage() {
     const base: ColumnDef<Activity>[] = [
       { accessorKey: "date", header: "تاریخ", cell: (ctx) => <span>{String(ctx.getValue())}</span> },
       { accessorKey: "customer_name", header: "مشتری" },
+      {
+        id: "actors",
+        header: "چه کسی انجام داد",
+        cell: ({ row }) => (
+          <div className="text-xs leading-5">
+            <div>
+              <span className="text-slate-500">ثبت: </span>
+              <span>{row.original.created_by_username || row.original.created_by_user_id || "-"}</span>
+            </div>
+            {row.original.done_by_user_id && (
+              <div>
+                <span className="text-slate-500">تکمیل: </span>
+                <span>{row.original.done_by_username || row.original.done_by_user_id}</span>
+              </div>
+            )}
+          </div>
+        )
+      },
       { accessorKey: "activity_type", header: "نوع فعالیت" },
       { accessorKey: "location", header: "موقعیت" },
       {
@@ -567,6 +585,10 @@ export function ActivitiesPage() {
           </>
         }
       >
+        <div className="mb-2 rounded-lg bg-slate-50 border border-slate-200 p-2 text-xs text-slate-700">
+          <span className="ml-3">ثبت‌کننده: {selected?.created_by_username || selected?.created_by_user_id || "-"}</span>
+          <span>تکمیل‌کننده: {selected?.done_by_username || selected?.done_by_user_id || "-"}</span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-slate-600">تاریخ</label>

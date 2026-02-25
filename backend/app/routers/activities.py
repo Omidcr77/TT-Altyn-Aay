@@ -28,7 +28,9 @@ def _activity_to_dict(a: Activity) -> dict:
         "created_at": a.created_at.isoformat(),
         "updated_at": a.updated_at.isoformat() if a.updated_at else None,
         "created_by_user_id": a.created_by_user_id,
+        "created_by_username": None,
         "done_by_user_id": a.done_by_user_id,
+        "done_by_username": None,
         "done_at": a.done_at.isoformat() if a.done_at else None,
         "date": a.date.isoformat(),
         "activity_type": a.activity_type,
@@ -46,6 +48,24 @@ def _activity_to_dict(a: Activity) -> dict:
             if item.staff
         ],
     }
+
+
+def _attach_usernames(items: list[dict], db: Session) -> list[dict]:
+    user_ids: set[int] = set()
+    for item in items:
+        if item.get("created_by_user_id"):
+            user_ids.add(int(item["created_by_user_id"]))
+        if item.get("done_by_user_id"):
+            user_ids.add(int(item["done_by_user_id"]))
+
+    if user_ids:
+        user_map = {u.id: u.username for u in db.query(User).filter(User.id.in_(list(user_ids))).all()}
+        for item in items:
+            created_id = item.get("created_by_user_id")
+            done_id = item.get("done_by_user_id")
+            item["created_by_username"] = user_map.get(created_id)
+            item["done_by_username"] = user_map.get(done_id)
+    return items
 
 
 def _activity_snapshot(a: Activity) -> dict:
@@ -166,7 +186,9 @@ async def create_activity(payload: ActivityCreate, db: Session = Depends(get_db)
         .filter(Activity.id == activity.id)
         .first()
     )
-    return ok(_activity_to_dict(fresh))
+    payload = _activity_to_dict(fresh)
+    _attach_usernames([payload], db)
+    return ok(payload)
 
 
 @router.get("")
@@ -234,7 +256,9 @@ def list_activities(
         .limit(page_size)
         .all()
     )
-    return ok({"items": [_activity_to_dict(r) for r in rows], "page": page, "page_size": page_size, "total": total})
+    items = [_activity_to_dict(r) for r in rows]
+    _attach_usernames(items, db)
+    return ok({"items": items, "page": page, "page_size": page_size, "total": total})
 
 
 @router.get("/{activity_id}")
@@ -247,7 +271,9 @@ def get_activity(activity_id: int, db: Session = Depends(get_db), user: User = D
     )
     if not row:
         raise fail("NOT_FOUND", "فعالیت یافت نشد", status_code=404)
-    return ok(_activity_to_dict(row))
+    payload = _activity_to_dict(row)
+    _attach_usernames([payload], db)
+    return ok(payload)
 
 
 @router.put("/{activity_id}")
@@ -311,7 +337,9 @@ async def update_activity(activity_id: int, payload: ActivityUpdate, db: Session
         .filter(Activity.id == activity_id)
         .first()
     )
-    return ok(_activity_to_dict(fresh))
+    payload = _activity_to_dict(fresh)
+    _attach_usernames([payload], db)
+    return ok(payload)
 
 
 @router.delete("/{activity_id}")

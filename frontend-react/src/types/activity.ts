@@ -10,7 +10,9 @@ export interface Activity {
   created_at?: string;
   updated_at?: string | null;
   created_by_user_id?: number;
+  created_by_username?: string | null;
   done_by_user_id?: number | null;
+  done_by_username?: string | null;
   done_at?: string | null;
   date: string;
   activity_type: string;

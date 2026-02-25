@@ -23,10 +23,71 @@ function formatAuditDate(value: string) {
 function parseDetail(detailJson: string | null) {
   if (!detailJson) return null;
   try {
-    return JSON.parse(detailJson) as unknown;
+    return JSON.parse(detailJson) as Record<string, unknown>;
   } catch {
     return null;
   }
+}
+
+const fieldLabels: Record<string, string> = {
+  date: "تاریخ",
+  activity_type: "نوع فعالیت",
+  customer_name: "نام مشتری",
+  location: "موقعیت",
+  address: "آدرس",
+  status: "وضعیت",
+  priority: "اولویت",
+  report_text: "گزارش",
+  device_info: "دستگاه",
+  extra_fields: "فیلدهای اضافی",
+  assigned_staff_ids: "کارمندان مسئول",
+  done_by_user_id: "تکمیل‌کننده",
+  done_at: "زمان تکمیل"
+};
+
+function explainAudit(item: AuditItem) {
+  const detail = parseDetail(item.detail_json);
+  const actor = item.username || "کاربر نامشخص";
+  const lines: string[] = [];
+
+  if (!detail) return [`${actor} عملیات ${item.action} را روی ${item.entity}#${item.entity_id} انجام داد.`];
+
+  if (item.action === "create" && detail.after && typeof detail.after === "object") {
+    const after = detail.after as Record<string, unknown>;
+    lines.push(`${actor} یک فعالیت جدید ثبت کرد.`);
+    if (after.customer_name) lines.push(`مشتری: ${String(after.customer_name)}`);
+    if (after.activity_type) lines.push(`نوع فعالیت: ${String(after.activity_type)}`);
+    if (after.location) lines.push(`موقعیت: ${String(after.location)}`);
+    return lines;
+  }
+
+  if (item.action === "update") {
+    lines.push(`${actor} اطلاعات فعالیت را ویرایش کرد.`);
+    const changed = Array.isArray(detail.changed_fields) ? detail.changed_fields.map(String) : [];
+    if (changed.length) {
+      lines.push(`فیلدهای تغییر یافته: ${changed.map((f) => fieldLabels[f] || f).join("، ")}`);
+    }
+    return lines;
+  }
+
+  if (item.action === "delete") {
+    return [`${actor} این فعالیت را حذف کرد.`];
+  }
+
+  if (item.action === "mark_done") {
+    return [`${actor} وضعیت فعالیت را «انجام شد» کرد.`];
+  }
+
+  if (item.action.startsWith("bulk_")) {
+    const action = String((detail as Record<string, unknown>).action || item.action);
+    return [`${actor} عملیات گروهی «${action}» را اجرا کرد.`];
+  }
+
+  if (item.action.startsWith("undo_")) {
+    return [`${actor} عملیات قبلی را بازگشت داد.`];
+  }
+
+  return [`${actor} عملیات ${item.action} را روی ${item.entity}#${item.entity_id} انجام داد.`];
 }
 
 function relativeTime(value: string) {
@@ -55,6 +116,7 @@ export function AuditPage() {
   const [undoOnly, setUndoOnly] = useState(false);
   const [selected, setSelected] = useState<AuditItem | null>(null);
   const [undoTarget, setUndoTarget] = useState<AuditItem | null>(null);
+  const [showRawJson, setShowRawJson] = useState(false);
 
   const auditQuery = useQuery({
     queryKey: ["audit", page, pageSize],
@@ -139,7 +201,13 @@ export function AuditPage() {
         enableSorting: false,
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
-            <button className="btn-secondary" onClick={() => setSelected(row.original)}>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setShowRawJson(false);
+                setSelected(row.original);
+              }}
+            >
               جزئیات
             </button>
             {row.original.undoable && (
@@ -287,11 +355,25 @@ export function AuditPage() {
       <Modal
         open={!!selected}
         title={selected ? `جزئیات ممیزی #${selected.id}` : "جزئیات"}
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          setSelected(null);
+          setShowRawJson(false);
+        }}
         footer={
-          <button className="btn-secondary" onClick={() => setSelected(null)}>
-            بستن
-          </button>
+          <div className="flex gap-2">
+            <button className="btn-secondary" onClick={() => setShowRawJson((v) => !v)}>
+              {showRawJson ? "نمایش توضیح" : "نمایش JSON خام"}
+            </button>
+            <button
+              className="btn-secondary"
+              onClick={() => {
+                setSelected(null);
+                setShowRawJson(false);
+              }}
+            >
+              بستن
+            </button>
+          </div>
         }
       >
         {selected && (
@@ -317,10 +399,23 @@ export function AuditPage() {
               </div>
             </div>
             <div>
-              <p className="text-sm font-semibold mb-1">JSON جزئیات</p>
-              <pre className="rounded-lg bg-slate-900 text-slate-100 p-3 overflow-auto text-xs leading-6">
-                {JSON.stringify(parseDetail(selected.detail_json) ?? selected.detail_json ?? {}, null, 2)}
-              </pre>
+              {!showRawJson ? (
+                <>
+                  <p className="text-sm font-semibold mb-1">توضیح عملیات</p>
+                  <ul className="list-disc pr-5 text-sm space-y-1">
+                    {explainAudit(selected).map((line, idx) => (
+                      <li key={idx}>{line}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold mb-1">JSON جزئیات</p>
+                  <pre className="rounded-lg bg-slate-900 text-slate-100 p-3 overflow-auto text-xs leading-6">
+                    {JSON.stringify(parseDetail(selected.detail_json) ?? selected.detail_json ?? {}, null, 2)}
+                  </pre>
+                </>
+              )}
             </div>
           </div>
         )}
