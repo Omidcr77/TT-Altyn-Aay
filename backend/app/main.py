@@ -13,7 +13,7 @@ from .api_utils import ok
 from .config import settings
 from .database import Base, SessionLocal, engine
 from .models import Activity
-from .routers import activities, audit, auth, dashboard, exports, master_data, notifications, staff, suggestions, system, users
+from .routers import activities, audit, auth, dashboard, exports, master_data, notifications, permissions, staff, suggestions, system, users
 from .services.address_service import backfill_activity_addresses
 from .services.backup_service import apply_retention, create_backup, run_backup_scheduler
 from .services.excel_service import ensure_excel_exists, sync_activity
@@ -139,6 +139,7 @@ app.include_router(suggestions.router)
 app.include_router(audit.router)
 app.include_router(system.router)
 app.include_router(users.router)
+app.include_router(permissions.router)
 
 @app.get("/")
 def home():

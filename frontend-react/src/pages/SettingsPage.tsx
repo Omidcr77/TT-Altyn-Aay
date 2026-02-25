@@ -20,8 +20,10 @@ import {
   type MasterDataPayload
 } from "@/services/masterData";
 import { fetchNotificationRules, runNotificationRules, saveNotificationRules, type NotificationRules } from "@/services/notifications";
+import { fetchRolePermissions, saveRolePermissions } from "@/services/permissions";
 import { createBackup, fetchBackups, restoreBackup } from "@/services/system";
 import type { MasterCategory, MasterDataItem } from "@/types/masterData";
+import type { RolePermissionsResponse } from "@/types/permissions";
 import type { BackupItem } from "@/types/system";
 
 const masterSchema = z.object({
@@ -70,6 +72,7 @@ export function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({});
 
   const masterForm = useForm<MasterForm>({
     resolver: zodResolver(masterSchema),
@@ -98,6 +101,12 @@ export function SettingsPage() {
     enabled: canAdminEdit
   });
 
+  const permissionsQuery = useQuery({
+    queryKey: ["role-permissions"],
+    queryFn: fetchRolePermissions,
+    enabled: canAdminEdit
+  });
+
   useEffect(() => {
     if (!systemSettingsQuery.data) return;
     const map = new Map(systemSettingsQuery.data.map((row) => [row.key, row.value]));
@@ -109,6 +118,11 @@ export function SettingsPage() {
     if (!rulesQuery.data) return;
     setRuleValues(rulesQuery.data);
   }, [rulesQuery.data]);
+
+  useEffect(() => {
+    if (!permissionsQuery.data) return;
+    setRolePermissions(permissionsQuery.data.permissions || {});
+  }, [permissionsQuery.data]);
 
   const createMasterMutation = useMutation({
     mutationFn: (payload: MasterDataPayload) => createMasterData(payload),
@@ -200,6 +214,15 @@ export function SettingsPage() {
     onError: (error) => showToast(error instanceof Error ? error.message : "بازیابی Backup ناکام شد", "error")
   });
 
+  const savePermissionsMutation = useMutation({
+    mutationFn: (mapping: Record<string, string[]>) => saveRolePermissions(mapping),
+    onSuccess: () => {
+      showToast("ماتریس دسترسی ذخیره شد", "success");
+      void queryClient.invalidateQueries({ queryKey: ["role-permissions"] });
+    },
+    onError: (error) => showToast(error instanceof Error ? error.message : "ذخیره دسترسی‌ها ناکام شد", "error")
+  });
+
   const masterColumns = useMemo<ColumnDef<MasterDataItem>[]>(
     () => [
       { accessorKey: "id", header: "ID" },
@@ -270,6 +293,17 @@ export function SettingsPage() {
     createMasterMutation.mutate(payload);
   }
 
+  function toggleRolePermission(role: string, permission: string, checked: boolean) {
+    setRolePermissions((prev) => {
+      const current = new Set(prev[role] || []);
+      if (checked) current.add(permission);
+      else current.delete(permission);
+      return { ...prev, [role]: Array.from(current).sort() };
+    });
+  }
+
+  const permissionAvailable = (permissionsQuery.data as RolePermissionsResponse | undefined)?.available || [];
+
   return (
     <section className="space-y-3">
       <header className="card p-4">
@@ -319,6 +353,53 @@ export function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {canAdminEdit && (
+        <section className="card p-3 space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold">ماتریس دسترسی نقش‌ها</h4>
+            <button className="btn-primary" disabled={savePermissionsMutation.isPending} onClick={() => savePermissionsMutation.mutate(rolePermissions)}>
+              ذخیره دسترسی‌ها
+            </button>
+          </div>
+          {permissionsQuery.isLoading ? (
+            <div className="text-sm text-slate-500">در حال بارگذاری دسترسی‌ها...</div>
+          ) : permissionsQuery.isError ? (
+            <div className="text-sm text-red-600">{permissionsQuery.error instanceof Error ? permissionsQuery.error.message : "خطا در دریافت دسترسی‌ها"}</div>
+          ) : (
+            <div className="overflow-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-sm min-w-[760px]">
+                <thead className="bg-slate-100">
+                  <tr>
+                    <th className="text-right p-2">دسترسی</th>
+                    <th className="text-right p-2">admin</th>
+                    <th className="text-right p-2">manager</th>
+                    <th className="text-right p-2">staff</th>
+                    <th className="text-right p-2">viewer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {permissionAvailable.map((perm) => (
+                    <tr key={perm} className="border-t border-slate-200">
+                      <td className="p-2 font-mono text-xs">{perm}</td>
+                      {(["admin", "manager", "staff", "viewer"] as const).map((role) => (
+                        <td key={role} className="p-2">
+                          <input
+                            type="checkbox"
+                            checked={(rolePermissions[role] || []).includes(perm)}
+                            onChange={(e) => toggleRolePermission(role, perm, e.target.checked)}
+                            disabled={role === "admin" && perm === "users.manage"}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="card p-3 space-y-3">
         <div className="flex items-center justify-between">
