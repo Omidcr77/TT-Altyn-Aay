@@ -29,14 +29,14 @@ export function AppShell() {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="min-h-screen bg-slate-100 lg:grid lg:grid-cols-[260px_1fr]">
+    <div className="min-h-screen bg-slate-100">
       <button
         className={`fixed inset-0 z-30 bg-slate-900/40 lg:hidden ${menuOpen ? "block" : "hidden"}`}
         onClick={closeMenu}
         aria-label="بستن منو"
       />
       <aside
-        className={`fixed inset-y-0 right-0 z-40 w-[260px] bg-brand-900 text-white p-4 grid grid-rows-[auto_1fr_auto] gap-4 transition-transform lg:static lg:w-auto ${
+        className={`fixed inset-y-0 right-0 z-40 w-[260px] bg-brand-900 text-white p-4 grid grid-rows-[auto_1fr_auto] gap-4 transition-transform ${
           menuOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         }`}
       >
@@ -95,7 +95,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="p-3 sm:p-4">
+      <main className="p-3 sm:p-4 lg:mr-[260px]">
         <header className="card px-3 py-3 sm:px-4 mb-4 flex items-center justify-between gap-3">
           <button className="btn-secondary lg:hidden" onClick={() => setMenuOpen(true)} aria-label="باز کردن منو">
             منو
