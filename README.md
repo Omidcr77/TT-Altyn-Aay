@@ -4,7 +4,7 @@ Activity and operations management system with:
 - FastAPI backend
 - SQLite database
 - React frontend (Vite + TypeScript)
-- Legacy vanilla frontend (kept for reference)
+- React frontend (active UI)
 
 ## Main Features
 - JWT authentication with role-based access (`admin`, `manager`, `user`)
@@ -28,7 +28,6 @@ TT Altyn Aay/
   frontend-react/
     src/
     package.json
-  frontend/                 # legacy vanilla frontend
   tests/
   requirements.txt
   README.md

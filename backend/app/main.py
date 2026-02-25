@@ -2,14 +2,11 @@ import asyncio
 import time
 from uuid import uuid4
 
-from pathlib import Path
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 from .api_utils import ok
 from .config import settings
@@ -112,14 +109,9 @@ app.include_router(suggestions.router)
 app.include_router(audit.router)
 app.include_router(system.router)
 
-root_dir = Path(__file__).resolve().parents[2]
-frontend_dir = root_dir / "frontend"
-app.mount("/frontend", StaticFiles(directory=str(frontend_dir)), name="frontend")
-
-
 @app.get("/")
 def home():
-    return FileResponse(frontend_dir / "index.html")
+    return ok({"service": "TT Altyn Aay API", "frontend": "React app runs separately"})
 
 
 @app.on_event("startup")
