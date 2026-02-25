@@ -1,8 +1,12 @@
 import { apiRequest } from "./http";
-import type { AppUser, CreateUserPayload, UpdateUserPayload } from "@/types/user";
+import type { AppUser, AppUserOption, CreateUserPayload, UpdateUserPayload } from "@/types/user";
 
 export function fetchUsers() {
   return apiRequest<AppUser[]>("/api/users");
+}
+
+export function fetchUserOptions() {
+  return apiRequest<AppUserOption[]>("/api/users/options");
 }
 
 export function createUser(payload: CreateUserPayload) {

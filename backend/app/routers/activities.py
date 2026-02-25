@@ -232,6 +232,8 @@ def list_activities(
     staff_id: int | None = None,
     customer: str | None = None,
     location: str | None = None,
+    created_by_user_id: int | None = None,
+    done_by_user_id: int | None = None,
     date_from: str | None = None,
     date_to: str | None = None,
 ):
@@ -267,6 +269,10 @@ def list_activities(
     if location:
         like = f"%{location}%"
         filters.append(or_(Activity.address.ilike(like), Activity.location.ilike(like)))
+    if created_by_user_id:
+        filters.append(Activity.created_by_user_id == created_by_user_id)
+    if done_by_user_id:
+        filters.append(Activity.done_by_user_id == done_by_user_id)
     try:
         if date_from:
             filters.append(Activity.date >= date.fromisoformat(date_from))

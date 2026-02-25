@@ -24,6 +24,7 @@ import {
   validateExcelImport
 } from "@/services/exports";
 import { fetchStaff } from "@/services/staff";
+import { fetchUserOptions } from "@/services/users";
 import type { Activity, ActivityTimelineItem, ActivityUpdatePayload } from "@/types/activity";
 import type { ExcelValidateResult } from "@/types/export";
 
@@ -60,6 +61,8 @@ export function ActivitiesPage() {
   const [dateTo, setDateTo] = useState(searchParams.get("dateTo") || "");
   const [staffId, setStaffId] = useState(searchParams.get("staffId") || "");
   const [customer, setCustomer] = useState(searchParams.get("customer") || "");
+  const [createdByUserId, setCreatedByUserId] = useState(searchParams.get("createdByUserId") || "");
+  const [doneByUserId, setDoneByUserId] = useState(searchParams.get("doneByUserId") || "");
   const [focusActivityId, setFocusActivityId] = useState<number | null>(() => {
     const raw = Number(searchParams.get("activityId") || "0");
     return raw > 0 ? raw : null;
@@ -90,7 +93,7 @@ export function ActivitiesPage() {
 
   useEffect(() => {
     setSelectedIds([]);
-  }, [tab, page, search, dateFrom, dateTo, staffId, customer]);
+  }, [tab, page, search, dateFrom, dateTo, staffId, customer, createdByUserId, doneByUserId]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -101,9 +104,11 @@ export function ActivitiesPage() {
     if (dateTo) params.set("dateTo", dateTo);
     if (staffId) params.set("staffId", staffId);
     if (customer.trim()) params.set("customer", customer.trim());
+    if (createdByUserId) params.set("createdByUserId", createdByUserId);
+    if (doneByUserId) params.set("doneByUserId", doneByUserId);
     if (focusActivityId) params.set("activityId", String(focusActivityId));
     setSearchParams(params, { replace: true });
-  }, [tab, page, search, dateFrom, dateTo, staffId, customer, focusActivityId, setSearchParams]);
+  }, [tab, page, search, dateFrom, dateTo, staffId, customer, createdByUserId, doneByUserId, focusActivityId, setSearchParams]);
 
   useEffect(() => {
     if (!focusActivityId) return;
@@ -120,13 +125,30 @@ export function ActivitiesPage() {
   }, [focusActivityId]);
 
   const activitiesQuery = useQuery({
-    queryKey: ["activities", { tab, page, pageSize, search: debouncedSearch, dateFrom, dateTo, staffId, customer: debouncedCustomer }],
-    queryFn: () => fetchActivities({ page, pageSize, status: tab, search: debouncedSearch, dateFrom, dateTo, staffId, customer: debouncedCustomer })
+    queryKey: ["activities", { tab, page, pageSize, search: debouncedSearch, dateFrom, dateTo, staffId, customer: debouncedCustomer, createdByUserId, doneByUserId }],
+    queryFn: () =>
+      fetchActivities({
+        page,
+        pageSize,
+        status: tab,
+        search: debouncedSearch,
+        dateFrom,
+        dateTo,
+        staffId,
+        customer: debouncedCustomer,
+        createdByUserId,
+        doneByUserId
+      })
   });
 
   const staffQuery = useQuery({
     queryKey: ["staff-options"],
     queryFn: fetchStaff
+  });
+
+  const usersQuery = useQuery({
+    queryKey: ["user-options"],
+    queryFn: fetchUserOptions
   });
 
   const doneMutation = useMutation({
@@ -375,7 +397,7 @@ export function ActivitiesPage() {
         <div className="text-sm text-slate-500">جمع: {total}</div>
       </div>
 
-      <div className="card p-3 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="card p-3 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-8 gap-2">
         <input className="input" placeholder="جستجو" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
         <input className="input" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} />
         <input className="input" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} />
@@ -390,6 +412,18 @@ export function ActivitiesPage() {
             ))}
         </select>
         <input className="input" placeholder="نام مشتری" value={customer} onChange={(e) => { setCustomer(e.target.value); setPage(1); }} />
+        <select className="input" value={createdByUserId} onChange={(e) => { setCreatedByUserId(e.target.value); setPage(1); }}>
+          <option value="">ثبت‌کننده (همه)</option>
+          {(usersQuery.data || []).map((u) => (
+            <option key={u.id} value={String(u.id)}>{u.username}</option>
+          ))}
+        </select>
+        <select className="input" value={doneByUserId} onChange={(e) => { setDoneByUserId(e.target.value); setPage(1); }}>
+          <option value="">تکمیل‌کننده (همه)</option>
+          {(usersQuery.data || []).map((u) => (
+            <option key={u.id} value={String(u.id)}>{u.username}</option>
+          ))}
+        </select>
         <button
           className="btn-secondary"
           onClick={() => {
@@ -398,6 +432,8 @@ export function ActivitiesPage() {
             setDateTo("");
             setStaffId("");
             setCustomer("");
+            setCreatedByUserId("");
+            setDoneByUserId("");
             setFocusActivityId(null);
             setPage(1);
           }}

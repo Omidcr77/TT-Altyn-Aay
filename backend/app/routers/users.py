@@ -4,12 +4,18 @@ from sqlalchemy.orm import Session
 from ..api_utils import fail, ok
 from ..auth import hash_password
 from ..database import get_db
-from ..deps import normalize_role, require_admin
+from ..deps import get_current_user, normalize_role, require_admin
 from ..models import User
 from ..schemas import UserCreate, UserUpdate
 from ..services.audit_service import add_audit_log
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+@router.get("/options")
+def list_user_options(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    rows = db.query(User).order_by(User.username.asc()).all()
+    return ok([{"id": x.id, "username": x.username} for x in rows])
 
 
 @router.get("")

@@ -10,6 +10,8 @@ export interface ActivityFilters {
   dateTo?: string;
   staffId?: string;
   customer?: string;
+  createdByUserId?: string;
+  doneByUserId?: string;
 }
 
 function toQuery(filters: ActivityFilters) {
@@ -22,6 +24,8 @@ function toQuery(filters: ActivityFilters) {
   if (filters.dateTo) p.set("date_to", filters.dateTo);
   if (filters.staffId) p.set("staff_id", filters.staffId);
   if (filters.customer?.trim()) p.set("customer", filters.customer.trim());
+  if (filters.createdByUserId) p.set("created_by_user_id", filters.createdByUserId);
+  if (filters.doneByUserId) p.set("done_by_user_id", filters.doneByUserId);
   return p.toString();
 }
 

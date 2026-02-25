@@ -7,6 +7,11 @@ export interface AppUser {
   created_at: string;
 }
 
+export interface AppUserOption {
+  id: number;
+  username: string;
+}
+
 export interface CreateUserPayload {
   username: string;
   password: string;
