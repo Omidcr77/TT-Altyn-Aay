@@ -7,3 +7,7 @@ backups/
 frontend-react/node_modules/
 frontend-react/dist/
 frontend-react/.vite/
+.env
+*.log
+*.tsbuildinfo
+import-normalized.xlsx

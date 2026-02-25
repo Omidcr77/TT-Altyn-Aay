@@ -47,14 +47,24 @@ python -m venv .venv
 ```powershell
 pip install -r requirements.txt
 ```
-4. Run API server:
+4. Create env file:
+```powershell
+copy .env.example .env
+```
+5. Run API server:
 ```powershell
 uvicorn backend.app.main:app --reload
 ```
-5. Backend URL:
+6. Backend URL:
 ```text
 http://127.0.0.1:8000
 ```
+
+### Production safety
+- Set `APP_ENV=production`
+- Set strong `JWT_SECRET`
+- Change `DEFAULT_ADMIN_PASSWORD`
+- Restrict `CORS_ORIGINS` and `TRUSTED_HOSTS`
 
 ## React Frontend Setup
 1. Install dependencies:
@@ -85,9 +95,19 @@ npm run build
 ## Testing
 From project root:
 ```powershell
-$env:PYTHONPATH='.'
 pytest -q
 ```
+
+## Database migrations (Alembic)
+Create migration:
+```powershell
+alembic revision -m "your change"
+```
+Apply migrations:
+```powershell
+alembic upgrade head
+```
+Current baseline revision: `20260225_0001`
 
 ## Security Notes
 - Password hashing uses bcrypt

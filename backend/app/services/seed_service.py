@@ -9,6 +9,9 @@ from ..models import Activity, ActivityAssignment, MasterData, Staff, User
 
 
 def seed_defaults(db: Session) -> None:
+    if settings.disable_default_seeding:
+        return
+
     admin = db.query(User).filter(User.username == settings.default_admin_username).first()
     if not admin:
         admin = User(

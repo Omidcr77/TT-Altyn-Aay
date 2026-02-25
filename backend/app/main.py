@@ -6,10 +6,13 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .api_utils import ok
+from .config import settings
 from .database import Base, SessionLocal, engine
 from .models import Activity
 from .routers import activities, audit, auth, dashboard, exports, master_data, notifications, staff, suggestions, system
@@ -25,6 +28,15 @@ rule_scheduler_task: asyncio.Task | None = None
 backup_scheduler_task: asyncio.Task | None = None
 
 setup_logging()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
 
 
 @app.middleware("http")
