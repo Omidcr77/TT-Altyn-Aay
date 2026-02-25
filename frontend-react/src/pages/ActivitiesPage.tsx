@@ -12,6 +12,7 @@ import {
   deleteActivity,
   fetchActivities,
   fetchActivity,
+  fetchActivityTimeline,
   markDone,
   updateActivity
 } from "@/services/activities";
@@ -23,7 +24,7 @@ import {
   validateExcelImport
 } from "@/services/exports";
 import { fetchStaff } from "@/services/staff";
-import type { Activity, ActivityUpdatePayload } from "@/types/activity";
+import type { Activity, ActivityTimelineItem, ActivityUpdatePayload } from "@/types/activity";
 import type { ExcelValidateResult } from "@/types/export";
 
 type BulkAction = "set_status" | "assign_staff" | "set_priority" | "delete";
@@ -72,6 +73,8 @@ export function ActivitiesPage() {
   const [doneTarget, setDoneTarget] = useState<Activity | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editDraft, setEditDraft] = useState<ActivityUpdatePayload>({});
+  const [timeline, setTimeline] = useState<ActivityTimelineItem[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [bulkActionType, setBulkActionType] = useState<BulkAction>("set_status");
@@ -195,8 +198,13 @@ export function ActivitiesPage() {
 
   async function onOpenEdit(id: number) {
     try {
+      setTimeline([]);
       const full = await fetchActivity(id);
       setSelected(full);
+      setTimelineLoading(true);
+      const timelineRes = await fetchActivityTimeline(id).catch(() => ({ items: [] }));
+      setTimeline(timelineRes.items || []);
+      setTimelineLoading(false);
       setEditDraft({
         date: full.date,
         activity_type: full.activity_type,
@@ -568,7 +576,10 @@ export function ActivitiesPage() {
       <Modal
         open={editOpen}
         title="ویرایش فعالیت"
-        onClose={() => setEditOpen(false)}
+        onClose={() => {
+          setEditOpen(false);
+          setTimeline([]);
+        }}
         footer={
           <>
             <button className="btn-secondary" onClick={() => setEditOpen(false)}>
@@ -590,6 +601,28 @@ export function ActivitiesPage() {
           <span className="ml-3">ثبت‌کننده: {selected?.created_by_username || selected?.created_by_user_id || "-"}</span>
           <span>تکمیل‌کننده: {selected?.done_by_username || selected?.done_by_user_id || "-"}</span>
         </div>
+
+        <div className="mb-3 rounded-lg border border-slate-200 p-2">
+          <p className="text-sm font-semibold mb-2">تایم‌لاین فعالیت</p>
+          {timelineLoading ? (
+            <p className="text-xs text-slate-500">در حال بارگذاری تایم‌لاین...</p>
+          ) : timeline.length === 0 ? (
+            <p className="text-xs text-slate-500">رویدادی ثبت نشده است.</p>
+          ) : (
+            <div className="space-y-2 max-h-40 overflow-auto">
+              {timeline.map((t) => (
+                <div key={t.id} className="rounded bg-slate-50 border border-slate-200 p-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold">#{t.id} · {t.action}</span>
+                    <span className="text-slate-500">{new Date(t.created_at).toLocaleString()}</span>
+                  </div>
+                  <p className="mt-1">{t.summary}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="text-sm text-slate-600">تاریخ</label>

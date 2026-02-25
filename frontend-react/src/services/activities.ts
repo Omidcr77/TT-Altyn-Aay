@@ -1,5 +1,5 @@
 import { apiRequest } from "@/services/http";
-import type { ActivitiesResponse, Activity, ActivityCreatePayload, ActivityUpdatePayload } from "@/types/activity";
+import type { ActivitiesResponse, Activity, ActivityCreatePayload, ActivityTimelineResponse, ActivityUpdatePayload } from "@/types/activity";
 
 export interface ActivityFilters {
   page: number;
@@ -31,6 +31,10 @@ export function fetchActivities(filters: ActivityFilters) {
 
 export function fetchActivity(id: number) {
   return apiRequest<Activity>(`/api/activities/${id}`);
+}
+
+export function fetchActivityTimeline(id: number) {
+  return apiRequest<ActivityTimelineResponse>(`/api/activities/${id}/timeline`);
 }
 
 export function markDone(id: number) {

@@ -34,6 +34,18 @@ export interface ActivitiesResponse {
   page_size: number;
 }
 
+export interface ActivityTimelineItem {
+  id: number;
+  action: string;
+  actor: string | null;
+  summary: string;
+  created_at: string;
+}
+
+export interface ActivityTimelineResponse {
+  items: ActivityTimelineItem[];
+}
+
 export interface ActivityUpdatePayload {
   date?: string;
   activity_type?: string;

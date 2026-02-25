@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..api_utils import fail, loads_json, ok
 from ..database import get_db
 from ..deps import get_current_user, normalize_role, require_editor, require_manager_or_admin
-from ..models import Activity, ActivityAssignment, Notification, Staff, SystemSetting, User
+from ..models import Activity, ActivityAssignment, AuditLog, Notification, Staff, SystemSetting, User
 from ..schemas import ActivityCreate, ActivityUpdate
 from ..services.address_service import normalize_address, normalize_location
 from ..services.audit_service import add_audit_log
@@ -87,6 +87,36 @@ def _activity_snapshot(a: Activity) -> dict:
         "extra_fields": loads_json(a.extra_fields_json),
         "assigned_staff_ids": [x.staff_id for x in current_assignments if x.staff_id],
     }
+
+
+def _summarize_audit_action(action: str, details: dict) -> str:
+    actor = "کاربر"
+    changed_fields = details.get("changed_fields") if isinstance(details.get("changed_fields"), list) else []
+
+    if action == "create":
+        after = details.get("after") if isinstance(details.get("after"), dict) else {}
+        customer = after.get("customer_name") or "-"
+        return f"{actor} فعالیت جدید برای {customer} ثبت کرد"
+    if action == "update":
+        if changed_fields:
+            fields = "، ".join(str(x) for x in changed_fields[:5])
+            return f"{actor} فعالیت را ویرایش کرد (فیلدها: {fields})"
+        return f"{actor} فعالیت را ویرایش کرد"
+    if action == "delete":
+        return f"{actor} فعالیت را حذف کرد"
+    if action == "mark_done":
+        return f"{actor} فعالیت را انجام‌شده علامت زد"
+    if action == "reorder":
+        after = details.get("after") if isinstance(details.get("after"), dict) else {}
+        prio = after.get("priority")
+        return f"{actor} اولویت فعالیت را به {prio} تغییر داد"
+    if action.startswith("bulk_"):
+        return f"{actor} عملیات گروهی {action.replace('bulk_', '')} را اجرا کرد"
+    if action.startswith("undo_"):
+        return f"{actor} بازگشت عملیات {action.replace('undo_', '')} را اجرا کرد"
+    if action == "undo_delete":
+        return f"{actor} فعالیت حذف‌شده را بازگرداند"
+    return f"{actor} عملیات {action} را اجرا کرد"
 
 
 def _changed_fields(before: dict, after: dict) -> list[str]:
@@ -274,6 +304,43 @@ def get_activity(activity_id: int, db: Session = Depends(get_db), user: User = D
     payload = _activity_to_dict(row)
     _attach_usernames([payload], db)
     return ok(payload)
+
+
+@router.get("/{activity_id}/timeline")
+def get_activity_timeline(activity_id: int, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.entity == "activity", AuditLog.entity_id == str(activity_id))
+        .order_by(AuditLog.created_at.desc())
+        .all()
+    )
+
+    user_ids = {x.user_id for x in logs if x.user_id}
+    user_map = {u.id: u.username for u in db.query(User).filter(User.id.in_(list(user_ids))).all()} if user_ids else {}
+
+    items = []
+    for x in logs:
+        details = {}
+        if x.detail_json:
+            try:
+                details = json.loads(x.detail_json)
+            except json.JSONDecodeError:
+                details = {}
+        actor = user_map.get(x.user_id) if x.user_id else None
+        summary = _summarize_audit_action(x.action, details)
+        if actor:
+            summary = summary.replace("کاربر", actor, 1)
+        items.append(
+            {
+                "id": x.id,
+                "action": x.action,
+                "actor": actor,
+                "summary": summary,
+                "created_at": x.created_at.isoformat(),
+            }
+        )
+
+    return ok({"items": items})
 
 
 @router.put("/{activity_id}")
