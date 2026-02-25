@@ -5,8 +5,8 @@ import { useAuth } from "@/app/AuthContext";
 export function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const location = useLocation();
-  const [username, setUsername] = useState(import.meta.env.DEV ? "admin" : "");
-  const [password, setPassword] = useState(import.meta.env.DEV ? "Admin@12345" : "");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

@@ -13,6 +13,7 @@ function pageMeta(pathname: string) {
   if (pathname.startsWith("/staff")) return { title: "کارمندان", subtitle: "مدیریت وضعیت و اطلاعات کارمندان" };
   if (pathname.startsWith("/settings")) return { title: "تنظیمات", subtitle: "داده های پایه و تنظیمات سیستم" };
   if (pathname.startsWith("/audit")) return { title: "گزارش ممیزی", subtitle: "ردیابی عملیات و تغییرات سیستم" };
+  if (pathname.startsWith("/users")) return { title: "مدیریت کاربران", subtitle: "CRUD کاربران و نقش ها" };
   return { title: "TT Altyn Aay", subtitle: "نسخه React" };
 }
 
@@ -72,9 +73,14 @@ export function AppShell() {
             </>
           )}
           {isAdmin && (
-            <NavLink to="/audit" onClick={closeMenu} className={({ isActive }) => `${navBase} ${isActive ? "bg-brand-500" : "hover:bg-brand-700"}`}>
-              گزارش ممیزی
-            </NavLink>
+            <>
+              <NavLink to="/audit" onClick={closeMenu} className={({ isActive }) => `${navBase} ${isActive ? "bg-brand-500" : "hover:bg-brand-700"}`}>
+                گزارش ممیزی
+              </NavLink>
+              <NavLink to="/users" onClick={closeMenu} className={({ isActive }) => `${navBase} ${isActive ? "bg-brand-500" : "hover:bg-brand-700"}`}>
+                مدیریت کاربران
+              </NavLink>
+            </>
           )}
         </nav>
 

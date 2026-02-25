@@ -13,6 +13,7 @@ import { StaffPage } from "@/pages/StaffPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 import { AuditPage } from "@/pages/AuditPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { UsersPage } from "@/pages/UsersPage";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function App() {
@@ -55,6 +56,14 @@ export default function App() {
                 element={
                   <RequireRole allow={["admin"]}>
                     <AuditPage />
+                  </RequireRole>
+                }
+              />
+              <Route
+                path="users"
+                element={
+                  <RequireRole allow={["admin"]}>
+                    <UsersPage />
                   </RequireRole>
                 }
               />

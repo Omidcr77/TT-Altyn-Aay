@@ -39,6 +39,18 @@ class UserOut(BaseModel):
         from_attributes = True
 
 
+class UserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    password: str = Field(min_length=6, max_length=120)
+    role: str = Field(default="staff")
+
+
+class UserUpdate(BaseModel):
+    username: str | None = Field(default=None, min_length=3, max_length=80)
+    password: str | None = Field(default=None, min_length=6, max_length=120)
+    role: str | None = None
+
+
 class StaffBase(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     phone: str | None = Field(default=None, max_length=50)
