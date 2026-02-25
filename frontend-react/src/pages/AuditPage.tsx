@@ -29,6 +29,19 @@ function parseDetail(detailJson: string | null) {
   }
 }
 
+function relativeTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "همین حالا";
+  if (mins < 60) return `${mins} دقیقه قبل`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} ساعت قبل`;
+  const days = Math.floor(hours / 24);
+  return `${days} روز قبل`;
+}
+
 export function AuditPage() {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -36,6 +49,10 @@ export function AuditPage() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [search, setSearch] = useState("");
+  const [actionFilter, setActionFilter] = useState("all");
+  const [entityFilter, setEntityFilter] = useState("all");
+  const [userFilter, setUserFilter] = useState("all");
+  const [undoOnly, setUndoOnly] = useState(false);
   const [selected, setSelected] = useState<AuditItem | null>(null);
   const [undoTarget, setUndoTarget] = useState<AuditItem | null>(null);
 
@@ -58,32 +75,63 @@ export function AuditPage() {
     }
   });
 
+  const allItems = auditQuery.data?.items || [];
+
+  const options = useMemo(() => {
+    const actions = Array.from(new Set(allItems.map((x) => x.action))).sort();
+    const entities = Array.from(new Set(allItems.map((x) => x.entity))).sort();
+    const users = Array.from(new Set(allItems.map((x) => x.username || "-")).values()).sort();
+    return { actions, entities, users };
+  }, [allItems]);
+
   const filteredItems = useMemo(() => {
-    const items = auditQuery.data?.items || [];
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((item) => {
-      const blob = [
-        item.id,
-        item.action,
-        item.entity,
-        item.entity_id,
-        item.username || "",
-        item.detail_json || ""
-      ]
+    return allItems.filter((item) => {
+      if (actionFilter !== "all" && item.action !== actionFilter) return false;
+      if (entityFilter !== "all" && item.entity !== entityFilter) return false;
+      if (userFilter !== "all" && (item.username || "-") !== userFilter) return false;
+      if (undoOnly && !item.undoable) return false;
+
+      if (!q) return true;
+      const blob = [item.id, item.action, item.entity, item.entity_id, item.username || "", item.detail_json || ""]
         .join(" ")
         .toLowerCase();
       return blob.includes(q);
     });
-  }, [auditQuery.data?.items, search]);
+  }, [allItems, search, actionFilter, entityFilter, userFilter, undoOnly]);
+
+  const stats = useMemo(() => {
+    const total = filteredItems.length;
+    const undoable = filteredItems.filter((x) => x.undoable).length;
+    const userCount = new Set(filteredItems.map((x) => x.username || "-")).size;
+    const actionCount = new Set(filteredItems.map((x) => x.action)).size;
+    return { total, undoable, userCount, actionCount };
+  }, [filteredItems]);
 
   const columns = useMemo<ColumnDef<AuditItem>[]>(
     () => [
       { accessorKey: "id", header: "ID" },
-      { accessorKey: "created_at", header: "زمان", cell: ({ row }) => formatAuditDate(row.original.created_at) },
+      {
+        accessorKey: "created_at",
+        header: "زمان",
+        cell: ({ row }) => (
+          <div>
+            <div>{formatAuditDate(row.original.created_at)}</div>
+            <div className="text-xs text-slate-500">{relativeTime(row.original.created_at)}</div>
+          </div>
+        )
+      },
       { accessorKey: "username", header: "کاربر", cell: ({ row }) => row.original.username || "-" },
-      { accessorKey: "action", header: "عملیات" },
-      { accessorKey: "entity", header: "موجودیت" },
+      {
+        accessorKey: "action",
+        header: "عملیات",
+        cell: ({ row }) => <span className="rounded-full bg-indigo-100 text-indigo-700 px-2 py-0.5 text-xs">{row.original.action}</span>
+      },
+      {
+        accessorKey: "entity",
+        header: "موجودیت",
+        cell: ({ row }) => <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">{row.original.entity}</span>
+      },
       { accessorKey: "entity_id", header: "شناسه" },
       {
         id: "actions",
@@ -108,6 +156,24 @@ export function AuditPage() {
 
   const total = auditQuery.data?.total ?? 0;
 
+  function clearFilters() {
+    setSearch("");
+    setActionFilter("all");
+    setEntityFilter("all");
+    setUserFilter("all");
+    setUndoOnly(false);
+  }
+
+  function exportJson() {
+    const blob = new Blob([JSON.stringify(filteredItems, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `audit-page-${page}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <section className="space-y-3">
       <header className="card p-4 flex items-center justify-between gap-2">
@@ -115,19 +181,78 @@ export function AuditPage() {
           <h3 className="text-lg font-semibold">گزارش ممیزی</h3>
           <p className="text-sm text-slate-500 mt-1">تاریخچه تغییرات، بررسی جزئیات و بازگشت عملیات قابل Undo.</p>
         </div>
-        <div className="text-sm text-slate-500">مجموع: {total}</div>
+        <div className="text-sm text-slate-500">مجموع کل: {total}</div>
       </header>
 
-      <section className="card p-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="card p-3">
+          <div className="text-xs text-slate-500">رکوردهای فیلترشده</div>
+          <div className="text-2xl font-bold">{stats.total}</div>
+        </div>
+        <div className="card p-3">
+          <div className="text-xs text-slate-500">قابل بازگشت</div>
+          <div className="text-2xl font-bold text-indigo-700">{stats.undoable}</div>
+        </div>
+        <div className="card p-3">
+          <div className="text-xs text-slate-500">کاربران فعال</div>
+          <div className="text-2xl font-bold">{stats.userCount}</div>
+        </div>
+        <div className="card p-3">
+          <div className="text-xs text-slate-500">انواع عملیات</div>
+          <div className="text-2xl font-bold">{stats.actionCount}</div>
+        </div>
+      </section>
+
+      <section className="card p-3 grid grid-cols-1 md:grid-cols-6 gap-2">
         <input
-          className="input"
+          className="input md:col-span-2"
           placeholder="جستجو در عملیات، کاربر، شناسه..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <button className="btn-secondary" onClick={() => setSearch("")}>
-          پاک‌سازی
-        </button>
+
+        <select className="input" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
+          <option value="all">همه عملیات</option>
+          {options.actions.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+
+        <select className="input" value={entityFilter} onChange={(e) => setEntityFilter(e.target.value)}>
+          <option value="all">همه موجودیت‌ها</option>
+          {options.entities.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+
+        <select className="input" value={userFilter} onChange={(e) => setUserFilter(e.target.value)}>
+          <option value="all">همه کاربران</option>
+          {options.users.map((x) => (
+            <option key={x} value={x}>
+              {x}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={undoOnly} onChange={(e) => setUndoOnly(e.target.checked)} />
+            فقط Undo
+          </label>
+        </div>
+
+        <div className="md:col-span-6 flex flex-wrap gap-2">
+          <button className="btn-secondary" onClick={clearFilters}>
+            پاک‌سازی فیلترها
+          </button>
+          <button className="btn-secondary" onClick={exportJson}>
+            خروجی JSON
+          </button>
+        </div>
       </section>
 
       <section className="card p-3">
@@ -137,7 +262,11 @@ export function AuditPage() {
           <div className="text-sm text-red-600">{auditQuery.error instanceof Error ? auditQuery.error.message : "خطا در دریافت ممیزی"}</div>
         ) : (
           <>
-            <DataTable columns={columns} data={filteredItems} />
+            <DataTable
+              columns={columns}
+              data={filteredItems}
+              getRowClassName={(row) => (row.undoable ? "bg-indigo-50/40" : undefined)}
+            />
             <div className="mt-3 flex items-center gap-2">
               <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                 قبلی
@@ -168,12 +297,24 @@ export function AuditPage() {
         {selected && (
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <div><strong>کاربر:</strong> {selected.username || "-"}</div>
-              <div><strong>عملیات:</strong> {selected.action}</div>
-              <div><strong>موجودیت:</strong> {selected.entity}</div>
-              <div><strong>شناسه:</strong> {selected.entity_id}</div>
-              <div><strong>زمان:</strong> {formatAuditDate(selected.created_at)}</div>
-              <div><strong>Undo:</strong> {selected.undoable ? "بلی" : "خیر"}</div>
+              <div>
+                <strong>کاربر:</strong> {selected.username || "-"}
+              </div>
+              <div>
+                <strong>عملیات:</strong> {selected.action}
+              </div>
+              <div>
+                <strong>موجودیت:</strong> {selected.entity}
+              </div>
+              <div>
+                <strong>شناسه:</strong> {selected.entity_id}
+              </div>
+              <div>
+                <strong>زمان:</strong> {formatAuditDate(selected.created_at)}
+              </div>
+              <div>
+                <strong>Undo:</strong> {selected.undoable ? "بلی" : "خیر"}
+              </div>
             </div>
             <div>
               <p className="text-sm font-semibold mb-1">JSON جزئیات</p>
