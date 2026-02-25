@@ -107,6 +107,7 @@ export function StaffPage() {
   const rows = staffQuery.data || [];
   const columns = useMemo<ColumnDef<StaffRef>[]>(
     () => [
+      { accessorKey: "id", header: "ID" },
       { accessorKey: "name", header: "نام" },
       { accessorKey: "phone", header: "شماره تماس", cell: ({ row }) => row.original.phone || "-" },
       {

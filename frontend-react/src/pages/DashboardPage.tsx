@@ -139,6 +139,7 @@ export function DashboardPage() {
             <table className="w-full text-sm min-w-[520px]">
               <thead className="bg-slate-100">
                 <tr>
+                  <th className="text-right p-2">ID</th>
                   <th className="text-right p-2">تاریخ</th>
                   <th className="text-right p-2">ایجاد</th>
                   <th className="text-right p-2">انجام</th>
@@ -146,8 +147,9 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {trends.items.slice(-10).map((row) => (
+                {trends.items.slice(-10).map((row, index) => (
                   <tr key={row.date} className="border-t border-slate-200">
+                    <td className="p-2">{index + 1}</td>
                     <td className="p-2">{row.date}</td>
                     <td className="p-2">{row.created}</td>
                     <td className="p-2">{row.done}</td>

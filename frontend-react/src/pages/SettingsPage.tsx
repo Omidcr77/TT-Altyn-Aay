@@ -186,6 +186,7 @@ export function SettingsPage() {
 
   const masterColumns = useMemo<ColumnDef<MasterDataItem>[]>(
     () => [
+      { accessorKey: "id", header: "ID" },
       {
         accessorKey: "category",
         header: "کتگوری",
@@ -301,6 +302,7 @@ export function SettingsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-slate-100">
                   <tr>
+                    <th className="text-right p-2">ID</th>
                     <th className="text-right p-2">فایل</th>
                     <th className="text-right p-2">تاریخ</th>
                     <th className="text-right p-2">اندازه</th>
@@ -308,8 +310,9 @@ export function SettingsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(backupsQuery.data || []).map((item) => (
+                  {(backupsQuery.data || []).map((item, index) => (
                     <tr key={item.file} className="border-t border-slate-200">
+                      <td className="p-2">{index + 1}</td>
                       <td className="p-2">{item.file}</td>
                       <td className="p-2">{item.created_at}</td>
                       <td className="p-2">{item.size_bytes}</td>
@@ -322,7 +325,7 @@ export function SettingsPage() {
                   ))}
                   {!(backupsQuery.data || []).length && (
                     <tr>
-                      <td className="p-4 text-slate-500" colSpan={4}>
+                      <td className="p-4 text-slate-500" colSpan={5}>
                         Backup موجود نیست.
                       </td>
                     </tr>

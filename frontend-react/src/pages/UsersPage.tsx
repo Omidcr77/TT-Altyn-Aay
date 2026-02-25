@@ -56,6 +56,7 @@ export function UsersPage() {
 
   const columns = useMemo<ColumnDef<AppUser>[]>(
     () => [
+      { accessorKey: "id", header: "ID" },
       { accessorKey: "username", header: "نام کاربری" },
       { accessorKey: "role", header: "نقش" },
       { accessorKey: "created_at", header: "تاریخ ایجاد" },

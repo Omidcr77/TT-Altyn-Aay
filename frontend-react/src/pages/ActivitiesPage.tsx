@@ -223,6 +223,7 @@ export function ActivitiesPage() {
 
   const columns = useMemo<ColumnDef<Activity>[]>(() => {
     const base: ColumnDef<Activity>[] = [
+      { accessorKey: "id", header: "ID" },
       { accessorKey: "date", header: "تاریخ", cell: (ctx) => <span>{String(ctx.getValue())}</span> },
       { accessorKey: "customer_name", header: "مشتری" },
       {
