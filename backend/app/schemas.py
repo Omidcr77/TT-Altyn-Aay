@@ -2,7 +2,7 @@ from datetime import date as dt_date
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ErrorPayload(BaseModel):
@@ -35,8 +35,7 @@ class UserOut(BaseModel):
     username: str
     role: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserCreate(BaseModel):
@@ -69,8 +68,7 @@ class StaffOut(StaffBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ActivityBase(BaseModel):
@@ -139,8 +137,7 @@ class NotificationOut(BaseModel):
     read_at: datetime | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MasterDataIn(BaseModel):
@@ -152,8 +149,7 @@ class MasterDataIn(BaseModel):
 class MasterDataOut(MasterDataIn):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SettingIn(BaseModel):
@@ -170,5 +166,4 @@ class AuditOut(BaseModel):
     detail_json: str | None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

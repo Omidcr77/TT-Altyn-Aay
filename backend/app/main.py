@@ -1,5 +1,6 @@
 import asyncio
 import time
+from contextlib import asynccontextmanager
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
@@ -20,9 +21,38 @@ from .services.monitoring_service import log_event, report_exception, setup_logg
 from .services.notification_rules_service import run_rule_scheduler
 from .services.seed_service import seed_defaults
 
-app = FastAPI(title="TT Altyn Aay App")
-rule_scheduler_task: asyncio.Task | None = None
-backup_scheduler_task: asyncio.Task | None = None
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        seed_defaults(db)
+        backfill_activity_addresses(db)
+        ensure_excel_exists()
+        create_backup()
+        apply_retention()
+        ids = [x[0] for x in db.query(Activity.id).all()]
+        for act_id in ids:
+            sync_activity(db, act_id)
+    finally:
+        db.close()
+
+    rule_scheduler_task = asyncio.create_task(run_rule_scheduler(SessionLocal))
+    backup_scheduler_task = asyncio.create_task(run_backup_scheduler())
+
+    try:
+        yield
+    finally:
+        rule_scheduler_task.cancel()
+        backup_scheduler_task.cancel()
+        for task in (rule_scheduler_task, backup_scheduler_task):
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
+app = FastAPI(title="TT Altyn Aay App", lifespan=lifespan)
 
 setup_logging()
 
@@ -113,51 +143,6 @@ app.include_router(users.router)
 @app.get("/")
 def home():
     return ok({"service": "TT Altyn Aay API", "frontend": "React app runs separately"})
-
-
-@app.on_event("startup")
-def on_startup():
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-    try:
-        seed_defaults(db)
-        backfill_activity_addresses(db)
-        ensure_excel_exists()
-        create_backup()
-        apply_retention()
-        ids = [x[0] for x in db.query(Activity.id).all()]
-        for act_id in ids:
-            sync_activity(db, act_id)
-    finally:
-        db.close()
-
-
-@app.on_event("startup")
-async def start_background_jobs():
-    global rule_scheduler_task
-    global backup_scheduler_task
-    rule_scheduler_task = asyncio.create_task(run_rule_scheduler(SessionLocal))
-    backup_scheduler_task = asyncio.create_task(run_backup_scheduler())
-
-
-@app.on_event("shutdown")
-async def stop_background_jobs():
-    global rule_scheduler_task
-    global backup_scheduler_task
-    if rule_scheduler_task:
-        rule_scheduler_task.cancel()
-        try:
-            await rule_scheduler_task
-        except asyncio.CancelledError:
-            pass
-        rule_scheduler_task = None
-    if backup_scheduler_task:
-        backup_scheduler_task.cancel()
-        try:
-            await backup_scheduler_task
-        except asyncio.CancelledError:
-            pass
-        backup_scheduler_task = None
 
 
 @app.get("/api/health")
