@@ -18,6 +18,63 @@ router = APIRouter(prefix="/api/audit", tags=["audit"])
 UNDOABLE_ACTIVITY_ACTIONS = {"create", "update", "delete", "mark_done", "reorder"}
 
 
+FIELD_LABELS = {
+    "date": "تاریخ",
+    "activity_type": "نوع فعالیت",
+    "customer_name": "نام مشتری",
+    "location": "موقعیت",
+    "address": "آدرس",
+    "status": "وضعیت",
+    "priority": "اولویت",
+    "report_text": "گزارش",
+    "device_info": "دستگاه",
+    "extra_fields": "فیلدهای اضافی",
+    "assigned_staff_ids": "کارمندان مسئول",
+    "done_by_user_id": "تکمیل‌کننده",
+    "done_at": "زمان تکمیل",
+}
+
+
+def _build_summary(action: str, entity: str, entity_id: str, actor: str | None, detail_json: str | None) -> str:
+    actor_name = actor or "کاربر"
+    details = {}
+    if detail_json:
+        try:
+            details = json.loads(detail_json)
+        except json.JSONDecodeError:
+            details = {}
+
+    if action == "create":
+        after = details.get("after") if isinstance(details.get("after"), dict) else {}
+        customer = after.get("customer_name") or "-"
+        return f"{actor_name} یک {entity} جدید برای {customer} ثبت کرد (#{entity_id})"
+
+    if action == "update":
+        changed = details.get("changed_fields") if isinstance(details.get("changed_fields"), list) else []
+        if changed:
+            labels = "، ".join(FIELD_LABELS.get(str(x), str(x)) for x in changed[:5])
+            return f"{actor_name} {entity} #{entity_id} را ویرایش کرد: {labels}"
+        return f"{actor_name} {entity} #{entity_id} را ویرایش کرد"
+
+    if action == "delete":
+        return f"{actor_name} {entity} #{entity_id} را حذف کرد"
+
+    if action == "mark_done":
+        return f"{actor_name} {entity} #{entity_id} را انجام‌شده علامت زد"
+
+    if action == "reorder":
+        after = details.get("after") if isinstance(details.get("after"), dict) else {}
+        return f"{actor_name} اولویت {entity} #{entity_id} را به {after.get('priority', '-')} تغییر داد"
+
+    if action.startswith("bulk_"):
+        return f"{actor_name} عملیات گروهی {action.replace('bulk_', '')} را روی {entity} انجام داد"
+
+    if action.startswith("undo_"):
+        return f"{actor_name} بازگشت عملیات {action.replace('undo_', '')} را روی {entity} اجرا کرد"
+
+    return f"{actor_name} عملیات {action} را روی {entity} #{entity_id} انجام داد"
+
+
 def _activity_snapshot(a: Activity) -> dict:
     current_assignments = [x for x in a.assignments if x.is_current]
     return {
@@ -108,14 +165,16 @@ def list_audit_logs(
     items = []
     for x in rows:
         undoable = x.entity == "activity" and x.action in UNDOABLE_ACTIVITY_ACTIONS
+        actor = user_map.get(x.user_id)
         items.append(
             {
                 "id": x.id,
                 "user_id": x.user_id,
-                "username": user_map.get(x.user_id),
+                "username": actor,
                 "action": x.action,
                 "entity": x.entity,
                 "entity_id": x.entity_id,
+                "summary": _build_summary(x.action, x.entity, x.entity_id, actor, x.detail_json),
                 "detail_json": x.detail_json,
                 "undoable": undoable,
                 "created_at": x.created_at.isoformat(),

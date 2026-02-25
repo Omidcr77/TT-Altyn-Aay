@@ -155,7 +155,7 @@ export function AuditPage() {
       if (undoOnly && !item.undoable) return false;
 
       if (!q) return true;
-      const blob = [item.id, item.action, item.entity, item.entity_id, item.username || "", item.detail_json || ""]
+      const blob = [item.id, item.action, item.entity, item.entity_id, item.username || "", item.summary || "", item.detail_json || ""]
         .join(" ")
         .toLowerCase();
       return blob.includes(q);
@@ -195,6 +195,11 @@ export function AuditPage() {
         cell: ({ row }) => <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">{row.original.entity}</span>
       },
       { accessorKey: "entity_id", header: "شناسه" },
+      {
+        accessorKey: "summary",
+        header: "توضیح",
+        cell: ({ row }) => <span className="text-xs text-slate-700">{row.original.summary || "-"}</span>
+      },
       {
         id: "actions",
         header: "اقدام",
@@ -403,7 +408,8 @@ export function AuditPage() {
                 <>
                   <p className="text-sm font-semibold mb-1">توضیح عملیات</p>
                   <ul className="list-disc pr-5 text-sm space-y-1">
-                    {explainAudit(selected).map((line, idx) => (
+                    <li>{selected.summary || explainAudit(selected)[0]}</li>
+                    {explainAudit(selected).slice(1).map((line, idx) => (
                       <li key={idx}>{line}</li>
                     ))}
                   </ul>

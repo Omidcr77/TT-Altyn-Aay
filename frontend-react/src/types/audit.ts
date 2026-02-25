@@ -5,6 +5,7 @@ export interface AuditItem {
   action: string;
   entity: string;
   entity_id: string;
+  summary?: string;
   detail_json: string | null;
   undoable: boolean;
   created_at: string;
